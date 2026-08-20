@@ -113,7 +113,11 @@ async function runIngest() {
         summary: item.contentSnippet ?? "",
       });
 
-      const primaryAsset = primaryTrackableAsset(assets);
+      // Se la notizia non nomina esplicitamente nessun asset tracciabile,
+      // usiamo comunque l'asset "tipico" della fonte come riferimento
+      // (es. ForexLive -> oro) invece di lasciare l'alert senza intestazione,
+      // che era confuso e inutile (bug osservato nel primo test reale).
+      const primaryAsset = primaryTrackableAsset(assets) || primaryTrackableAsset(source.defaultAssets);
       const direction = expectedDirection(text, primaryAsset);
 
       const row = {
