@@ -69,9 +69,9 @@ async function fetchSource(source) {
 }
 
 async function runCheck() {
-  console.log(`Verifica ${SOURCES.length} fonti...\n`);
-  for (const source of SOURCES) {
-    const { items, error } = await fetchSource(source);
+  console.log(`Verifica ${SOURCES.length} fonti (in parallelo)...\n`);
+  const results = await Promise.all(SOURCES.map(fetchSource));
+  for (const { source, items, error } of results) {
     if (error) {
       console.log(`[ROTTA]  ${source.id.padEnd(22)} ${source.url}\n         -> ${error}`);
     } else {
@@ -86,8 +86,14 @@ async function runIngest() {
   let inserted = 0;
   let alerted = 0;
 
-  for (const source of SOURCES) {
-    const { items, error } = await fetchSource(source);
+  // Le fonti vengono lette tutte insieme (non una alla volta): con 12+
+  // fonti, farlo in sequenza poteva superare abbondantemente i 4 minuti di
+  // timeout del job se anche solo un paio erano lente — successo nel primo
+  // test reale. In parallelo il tempo totale e' quello della fonte piu'
+  // lenta, non la somma di tutte.
+  const fetched = await Promise.all(SOURCES.map(fetchSource));
+
+  for (const { source, items, error } of fetched) {
     if (error) {
       console.warn(`[fonte rotta] ${source.id}: ${error}`);
       continue;
