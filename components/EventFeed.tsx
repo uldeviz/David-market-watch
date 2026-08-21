@@ -45,27 +45,59 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Rimozione ottimistica dalla lista locale: la riga sparisce subito dal
-  // feed appena l'azione riesce, senza aspettare il prossimo poll.
+  // Rimozione ottimistica dalla lista locale, MA se la richiesta fallisce
+  // davvero la notizia torna visibile e un avviso lo dice chiaramente —
+  // prima spariva comunque anche a salvataggio fallito (es. secret Supabase
+  // mancante su Vercel), dando l'illusione di averla persa per sempre.
   const handleArchive = useCallback(async (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    let removed: NewsEvent | undefined;
+    setEvents((prev) => {
+      removed = prev.find((e) => e.id === id);
+      return prev.filter((e) => e.id !== id);
+    });
     try {
-      await fetch(`/api/events/${id}`, {
+      const res = await fetch(`/api/events/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ARCHIVED" }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
-      // silenzioso: se fallisce, la notizia ricompare al prossimo poll comunque
+      if (removed) {
+        const r = removed;
+        setEvents((prev) =>
+          prev.some((e) => e.id === id)
+            ? prev
+            : [...prev, r].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at))
+        );
+      }
+      alert(
+        "Archiviazione non riuscita — la notizia e' tornata visibile. Controlla che SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY siano configurate su Vercel (e che sia stato rifatto un deploy dopo averle aggiunte)."
+      );
     }
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    let removed: NewsEvent | undefined;
+    setEvents((prev) => {
+      removed = prev.find((e) => e.id === id);
+      return prev.filter((e) => e.id !== id);
+    });
     try {
-      await fetch(`/api/events/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
-      // silenzioso
+      if (removed) {
+        const r = removed;
+        setEvents((prev) =>
+          prev.some((e) => e.id === id)
+            ? prev
+            : [...prev, r].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at))
+        );
+      }
+      alert(
+        "Eliminazione non riuscita — la notizia e' tornata visibile. Controlla che SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY siano configurate su Vercel (e che sia stato rifatto un deploy dopo averle aggiunte)."
+      );
     }
   }, []);
 

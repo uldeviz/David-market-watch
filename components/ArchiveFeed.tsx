@@ -26,25 +26,45 @@ function groupByDay(events: NewsEvent[]) {
 export function ArchiveFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
   const [events, setEvents] = useState<NewsEvent[]>(initialEvents);
 
+  // Stessa protezione del feed principale: se il salvataggio fallisce
+  // davvero, la notizia torna visibile invece di sembrare persa.
   const handleRestore = useCallback(async (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    let removed: NewsEvent | undefined;
+    setEvents((prev) => {
+      removed = prev.find((e) => e.id === id);
+      return prev.filter((e) => e.id !== id);
+    });
     try {
-      await fetch(`/api/events/${id}`, {
+      const res = await fetch(`/api/events/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ACTIVE" }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
-      // silenzioso
+      if (removed) {
+        const r = removed;
+        setEvents((prev) => (prev.some((e) => e.id === id) ? prev : [...prev, r]));
+      }
+      alert("Ripristino non riuscito — la notizia e' tornata visibile qui. Controlla la configurazione Supabase su Vercel.");
     }
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    let removed: NewsEvent | undefined;
+    setEvents((prev) => {
+      removed = prev.find((e) => e.id === id);
+      return prev.filter((e) => e.id !== id);
+    });
     try {
-      await fetch(`/api/events/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
-      // silenzioso
+      if (removed) {
+        const r = removed;
+        setEvents((prev) => (prev.some((e) => e.id === id) ? prev : [...prev, r]));
+      }
+      alert("Eliminazione non riuscita — la notizia e' tornata visibile qui. Controlla la configurazione Supabase su Vercel.");
     }
   }, []);
 
