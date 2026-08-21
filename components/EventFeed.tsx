@@ -4,6 +4,19 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { NewsEvent } from "@/lib/types";
 import { EventCard } from "./EventCard";
 
+// Estrae il messaggio d'errore vero dalla risposta dell'API (che risponde
+// { error: "..." } su fallimento) invece di mostrare solo "HTTP 500" — senza
+// questo, capire SE e PERCHE' fallisce richiedeva controllare i log Vercel.
+async function describeError(res: Response): Promise<string> {
+  try {
+    const json = await res.json();
+    if (json?.error) return String(json.error);
+  } catch {
+    // risposta non JSON, ignoriamo
+  }
+  return `HTTP ${res.status}`;
+}
+
 const POLL_MS = 45_000;
 const MAX_KEPT = 150; // tetto alla lista tenuta in memoria/mostrata
 
@@ -61,8 +74,8 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ARCHIVED" }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
+      if (!res.ok) throw new Error(await describeError(res));
+    } catch (err) {
       if (removed) {
         const r = removed;
         setEvents((prev) =>
@@ -71,9 +84,7 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
             : [...prev, r].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at))
         );
       }
-      alert(
-        "Archiviazione non riuscita — la notizia e' tornata visibile. Controlla che SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY siano configurate su Vercel (e che sia stato rifatto un deploy dopo averle aggiunte)."
-      );
+      alert(`Archiviazione non riuscita — la notizia e' tornata visibile.\n\nErrore: ${String(err instanceof Error ? err.message : err)}`);
     }
   }, []);
 
@@ -85,8 +96,8 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
     });
     try {
       const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
+      if (!res.ok) throw new Error(await describeError(res));
+    } catch (err) {
       if (removed) {
         const r = removed;
         setEvents((prev) =>
@@ -95,9 +106,7 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
             : [...prev, r].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at))
         );
       }
-      alert(
-        "Eliminazione non riuscita — la notizia e' tornata visibile. Controlla che SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY siano configurate su Vercel (e che sia stato rifatto un deploy dopo averle aggiunte)."
-      );
+      alert(`Eliminazione non riuscita — la notizia e' tornata visibile.\n\nErrore: ${String(err instanceof Error ? err.message : err)}`);
     }
   }, []);
 

@@ -4,6 +4,16 @@ import { useCallback, useState } from "react";
 import type { NewsEvent } from "@/lib/types";
 import { EventCard } from "./EventCard";
 
+async function describeError(res: Response): Promise<string> {
+  try {
+    const json = await res.json();
+    if (json?.error) return String(json.error);
+  } catch {
+    // risposta non JSON, ignoriamo
+  }
+  return `HTTP ${res.status}`;
+}
+
 // Raggruppa le notizie archiviate per giorno (fuso Bangkok, coerente col
 // resto della dashboard), piu' recenti prima — sia i gruppi che le notizie
 // dentro ogni gruppo.
@@ -40,13 +50,13 @@ export function ArchiveFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ACTIVE" }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
+      if (!res.ok) throw new Error(await describeError(res));
+    } catch (err) {
       if (removed) {
         const r = removed;
         setEvents((prev) => (prev.some((e) => e.id === id) ? prev : [...prev, r]));
       }
-      alert("Ripristino non riuscito — la notizia e' tornata visibile qui. Controlla la configurazione Supabase su Vercel.");
+      alert(`Ripristino non riuscito — la notizia e' tornata visibile qui.\n\nErrore: ${String(err instanceof Error ? err.message : err)}`);
     }
   }, []);
 
@@ -58,13 +68,13 @@ export function ArchiveFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
     });
     try {
       const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    } catch {
+      if (!res.ok) throw new Error(await describeError(res));
+    } catch (err) {
       if (removed) {
         const r = removed;
         setEvents((prev) => (prev.some((e) => e.id === id) ? prev : [...prev, r]));
       }
-      alert("Eliminazione non riuscita — la notizia e' tornata visibile qui. Controlla la configurazione Supabase su Vercel.");
+      alert(`Eliminazione non riuscita — la notizia e' tornata visibile qui.\n\nErrore: ${String(err instanceof Error ? err.message : err)}`);
     }
   }, []);
 
