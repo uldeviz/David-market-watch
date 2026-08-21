@@ -275,7 +275,17 @@ async function updatePriceTimelines(supabase) {
   } else {
     await runIngest();
   }
-})().catch((err) => {
-  console.error("Errore fatale:", err);
-  process.exit(1);
-});
+})()
+  .then(() => {
+    // Uscita esplicita: senza questa riga il processo Node puo' restare
+    // "vivo" anche a lavoro finito (un handle aperto, es. lato client
+    // Supabase, tiene occupato l'event loop) e GitHub Actions aspetta fino
+    // al timeout del job (4 minuti) prima di segnare il run "Cancelled" —
+    // osservato in un run reale che aveva gia' finito e loggato tutto in
+    // pochi secondi.
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("Errore fatale:", err);
+    process.exit(1);
+  });
