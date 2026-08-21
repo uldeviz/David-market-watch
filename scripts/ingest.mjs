@@ -27,6 +27,7 @@ import { contentHash, detectAssets, scoreImpact } from "../lib/scoring.mjs";
 import { primaryTrackableAsset, expectedDirection } from "../lib/direction.mjs";
 import { sendTelegramAlert, sendEmailAlert, ALERT_THRESHOLD } from "../lib/alerts.mjs";
 import { fetchIntraday, nearestPrice, pctChange } from "../lib/prices.mjs";
+import { translateToItalian } from "../lib/translate.mjs";
 
 const CHECK_ONLY = process.argv.includes("--check");
 const LOOKBACK_MINUTES = Number(process.env.LOOKBACK_MINUTES ?? 20);
@@ -153,6 +154,22 @@ async function runIngest() {
 
       inserted++;
       console.log(`[nuovo] (${score}/100 ${level}, atteso ${direction} su ${primaryAsset ?? "n/a"}) ${item.title}`);
+
+      // Traduzione solo qui (dopo insert riuscito, quindi solo su notizie
+      // davvero nuove) — se lo facessimo per ogni item del feed, ritraduciremmo
+      // le stesse notizie gia' viste ad ogni run finche' restano nella
+      // finestra di lookback, sprecando il limite giornaliero gratuito.
+      // Se fallisce (rete, quota, timeout) restiamo con null: alert e
+      // dashboard mostrano semplicemente il titolo originale in inglese.
+      const titleIt = await translateToItalian(item.title);
+      if (titleIt) {
+        data.title_it = titleIt;
+        const { error: translateError } = await supabase
+          .from("news_events")
+          .update({ title_it: titleIt })
+          .eq("id", data.id);
+        if (translateError) console.warn(`[traduzione] salvataggio fallito: ${translateError.message}`);
+      }
 
       if (score >= ALERT_THRESHOLD) {
         const [tg, em] = await Promise.all([sendTelegramAlert(data), sendEmailAlert(data)]);

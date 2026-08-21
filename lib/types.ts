@@ -18,14 +18,21 @@ export type Confirmation =
   | "NOT_APPLICABLE"
   | "INCONCLUSIVE";
 
+// ACTIVE = nel feed principale. ARCHIVED = spostata in /archivio (pulsante
+// "Archivia"), non cancellata. Il bottone "Elimina" invece rimuove la riga
+// per sempre dal database, non passa mai per questo stato.
+export type EventStatus = "ACTIVE" | "ARCHIVED";
+
 export interface NewsEvent {
   id: string;
   created_at: string;
   updated_at: string;
   published_at: string;
+  status: EventStatus;
   source: string;
   source_tier: "FAST" | "STANDARD" | "SLOW";
   title: string;
+  title_it: string | null; // titolo tradotto (MyMemory) — null se non disponibile, si usa "title"
   summary: string | null;
   url: string;
   assets: AssetTag[];

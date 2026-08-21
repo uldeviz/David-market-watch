@@ -2,8 +2,11 @@ name: Market Watch — Ingestion
 
 on:
   schedule:
+    # Ogni 5 minuti (minimo intervallo affidabile su GitHub Actions).
+    # Nota: durante picchi di carico GitHub puo' ritardare l'esecuzione di
+    # qualche minuto — normale, non e' un bug.
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch: {} # permette run manuale da tab "Actions"
 
 concurrency:
   group: market-watch-ingest
@@ -34,4 +37,7 @@ jobs:
           ALERT_EMAIL_FROM: ${{ secrets.ALERT_EMAIL_FROM }}
           ALERT_THRESHOLD: ${{ vars.ALERT_THRESHOLD }}
           LOOKBACK_MINUTES: "20"
+          # Opzionale: alza il limite giornaliero gratuito di MyMemory (la
+          # traduzione funziona anche senza, con un limite piu' basso).
+          TRANSLATE_CONTACT_EMAIL: ${{ secrets.TRANSLATE_CONTACT_EMAIL }}
         run: node scripts/ingest.mjs

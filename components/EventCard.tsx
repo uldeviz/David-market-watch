@@ -1,3 +1,5 @@
+"use client";
+
 import type { NewsEvent } from "@/lib/types";
 import { AssetBadge, ImpactBadge, SourceTierBadge } from "./Badges";
 import { ASSET_STYLE, CONFIRMATION_STYLE, DIRECTION_STYLE } from "@/lib/assetStyle";
@@ -35,11 +37,25 @@ function PricePoint({ label, before, value }: { label: string; before: number | 
   );
 }
 
-export function EventCard({ event }: { event: NewsEvent }) {
+// Bottoni azione opzionali: passali solo dove servono (feed principale ->
+// onArchive + onDelete, pagina /archivio -> onRestore + onDelete). Se non
+// passati, la card non mostra la riga di azioni (es. usi futuri read-only).
+export function EventCard({
+  event,
+  onArchive,
+  onRestore,
+  onDelete,
+}: {
+  event: NewsEvent;
+  onArchive?: (id: string) => void;
+  onRestore?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
   const confirmationStyle = CONFIRMATION_STYLE[event.confirmation];
   const directionStyle = DIRECTION_STYLE[event.expected_direction];
   const underlyingLabel = event.underlying_symbol ? ASSET_STYLE[event.underlying_symbol]?.label : null;
   const hasTimeline = event.underlying_symbol != null;
+  const hasActions = Boolean(onArchive || onRestore || onDelete);
 
   return (
     <li className="rounded-lg border border-line-border bg-surface-chart px-4 py-3.5 transition-colors hover:border-white/20">
@@ -52,9 +68,10 @@ export function EventCard({ event }: { event: NewsEvent }) {
         href={event.url ?? "#"}
         target="_blank"
         rel="noreferrer"
+        title={event.title_it ? event.title : undefined}
         className="block text-[13.5px] font-medium leading-snug text-ink-primary hover:underline"
       >
-        {event.title}
+        {event.title_it || event.title}
       </a>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -67,8 +84,10 @@ export function EventCard({ event }: { event: NewsEvent }) {
 
       {hasTimeline ? (
         <>
-          <div className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-secondary">
-            <span aria-hidden>{directionStyle.arrow}</span>
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-ink-secondary">
+            <span aria-hidden className={`text-xl leading-none ${directionStyle.className}`}>
+              {directionStyle.arrow}
+            </span>
             <span>
               {directionStyle.label} su <span className="font-medium text-ink-primary">{underlyingLabel}</span>
               <span className="text-ink-muted"> (euristica)</span>
@@ -86,13 +105,50 @@ export function EventCard({ event }: { event: NewsEvent }) {
         <p className="mt-3 text-[11px] text-ink-muted">Nessun asset con prezzo tracciabile per questo evento.</p>
       )}
 
-      <div className="mt-2.5">
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
         <span
           className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${confirmationStyle.className}`}
         >
           <span className={`h-1.5 w-1.5 rounded-full ${confirmationStyle.dot}`} />
           {confirmationStyle.label}
         </span>
+
+        {hasActions ? (
+          <div className="flex items-center gap-1.5">
+            {onArchive ? (
+              <button
+                type="button"
+                onClick={() => onArchive(event.id)}
+                className="rounded-full border border-line-border px-2.5 py-1 text-[11px] text-ink-secondary transition-colors hover:border-white/30 hover:text-ink-primary"
+              >
+                Archivia
+              </button>
+            ) : null}
+            {onRestore ? (
+              <button
+                type="button"
+                onClick={() => onRestore(event.id)}
+                className="rounded-full border border-line-border px-2.5 py-1 text-[11px] text-ink-secondary transition-colors hover:border-white/30 hover:text-ink-primary"
+              >
+                Ripristina
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={() => {
+                  // Cancellazione permanente: conferma richiesta, non si puo' annullare.
+                  if (window.confirm("Eliminare definitivamente questa notizia? Non si puo' annullare.")) {
+                    onDelete(event.id);
+                  }
+                }}
+                className="rounded-full border border-status-critical/40 bg-status-critical/10 px-2.5 py-1 text-[11px] text-status-critical transition-colors hover:bg-status-critical/20"
+              >
+                Elimina
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </li>
   );

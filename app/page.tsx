@@ -13,6 +13,7 @@ async function loadInitialData() {
   const { data, error } = await supabase
     .from("news_events")
     .select("*")
+    .eq("status", "ACTIVE")
     .gte("published_at", since)
     .order("published_at", { ascending: false })
     .limit(80);
@@ -64,9 +65,17 @@ export default async function Page() {
             Fonti monitorate ogni 5 minuti — Fed, Tesoro USA, ECB, BLS, newswire
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-line-border px-3 py-1.5">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-status-good" />
-          <span className="text-[11px] text-ink-secondary">Live</span>
+        <div className="flex items-center gap-3">
+          <a
+            href="/archivio"
+            className="text-[11px] text-ink-secondary underline-offset-2 hover:text-ink-primary hover:underline"
+          >
+            Archivio
+          </a>
+          <div className="flex items-center gap-2 rounded-full border border-line-border px-3 py-1.5">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-status-good" />
+            <span className="text-[11px] text-ink-secondary">Live</span>
+          </div>
         </div>
       </header>
 

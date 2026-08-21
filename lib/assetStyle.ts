@@ -50,8 +50,10 @@ export const CONFIRMATION_STYLE: Record<Confirmation, { label: string; className
   },
 };
 
-export const DIRECTION_STYLE: Record<Direction, { label: string; arrow: string }> = {
-  UP: { label: "Rialzo atteso", arrow: "▲" },
-  DOWN: { label: "Ribasso atteso", arrow: "▼" },
-  NEUTRAL: { label: "Direzione incerta", arrow: "↔" },
+// className qui e' per la freccia stessa (colore), non per il testo accanto —
+// la freccia era troppo piccola/poco visibile (segnalato su un test reale).
+export const DIRECTION_STYLE: Record<Direction, { label: string; arrow: string; className: string }> = {
+  UP: { label: "Rialzo atteso", arrow: "▲", className: "text-status-good" },
+  DOWN: { label: "Ribasso atteso", arrow: "▼", className: "text-status-critical" },
+  NEUTRAL: { label: "Direzione incerta", arrow: "↔", className: "text-ink-muted" },
 };

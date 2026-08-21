@@ -45,6 +45,30 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
     return () => clearInterval(id);
   }, [refresh]);
 
+  // Rimozione ottimistica dalla lista locale: la riga sparisce subito dal
+  // feed appena l'azione riesce, senza aspettare il prossimo poll.
+  const handleArchive = useCallback(async (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await fetch(`/api/events/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ARCHIVED" }),
+      });
+    } catch {
+      // silenzioso: se fallisce, la notizia ricompare al prossimo poll comunque
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await fetch(`/api/events/${id}`, { method: "DELETE" });
+    } catch {
+      // silenzioso
+    }
+  }, []);
+
   const levelRank = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 } as const;
   const threshold = minLevel === "ALL" ? -1 : levelRank[minLevel];
   const filtered = events.filter((e) => levelRank[e.impact_level] > threshold || minLevel === "ALL");
@@ -79,7 +103,7 @@ export function EventFeed({ initialEvents }: { initialEvents: NewsEvent[] }) {
       ) : (
         <ul className="flex flex-col gap-2.5">
           {filtered.map((e) => (
-            <EventCard key={e.id} event={e} />
+            <EventCard key={e.id} event={e} onArchive={handleArchive} onDelete={handleDelete} />
           ))}
         </ul>
       )}
